@@ -1,5 +1,5 @@
 # SPI_Display_Test
-Base project for ARMstrap Eagle and U8Glib using SPI
+Base project for ARMstrap Eagle (STM32F4x7) and U8Glib using SPI
 ## Using this project
 1. Update `ports_and_pins.h` with your configuration. The example uses SPI2 with the following pins:
  * PB10 - SCK

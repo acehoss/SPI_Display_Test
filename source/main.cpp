@@ -35,6 +35,8 @@ static char gPageCountStr[30];
 SPI_InitTypeDef  SPI_InitStructure;
 u8g_t u8g;
 
+extern u8g_dev_t u8g_dev_hd66753_168x132_hw_spi;
+
 int main()
 {
 	setup();
@@ -60,7 +62,10 @@ void setup()
 	SPI_Config();
 
 	/* U8G initialization - substitute second parameter with device driver for your screen */
-	u8g_InitComFn(&u8g, &u8g_dev_ssd1325_nhd27oled_2x_gr_hw_spi, u8g_com_hw_spi_fn);
+	//u8g_InitComFn(&u8g, &u8g_dev_ssd1325_nhd27oled_2x_gr_hw_spi, u8g_com_hw_spi_fn);
+
+	/* HD66753 */
+	u8g_InitComFn(&u8g, &u8g_dev_hd66753_168x132_hw_spi, u8g_com_hw_spi_fn);
 }
 
 void loop()
@@ -106,22 +111,28 @@ void loop()
 	 * the page. In the case of the NHD-2.7-12864 display, there are either 8 or
 	 * 16 pages depending on the U8G device constructor used. U8G does not
 	 * support single-page rendering out of the box, but it can with a few
-	 * relatively simple tweaks. This yields a noticable performance gain. */
+	 * relatively simple tweaks. This yields a noticeable performance gain. */
 	u8g_FirstPage(&u8g);
 	do
 	{
-		draw(pos/(gCurrentSysclkFreq+1));
+		//the first parameter of draw is used to cycle the display through various positions.
+		//it is primarily used to cycle the spinner through four positions. The clock freq index is
+		//used as a simple prescaler to keep the spinner going similar speeds across the various clock
+		//speeds. There is an additional /2 prescaler used here to slow it down a bit more.
+		//The second parameter is a first page indicator, to allow counters and such inside the draw
+		//function to incremented only on the first page.
+		draw(pos/(gCurrentSysclkFreq+1)/2, pageCounter == 0);
 		pageCounter++;
 	} while ( u8g_NextPage(&u8g) );
 
 	/* manage counters */
 	pageCount = pageCounter;
 	gFrameCounter++;
-	pos = (pos+1) % (4*(gCurrentSysclkFreq+1));
+	pos = (pos+1) % (8*(gCurrentSysclkFreq+1));
 }
 
 
-void draw(uint8_t pos)
+void draw(uint8_t pos, uint8_t first_page)
 {
 	/* Draw the pages per frame string */
 	u8g_SetColorIndex(&u8g, 2);
@@ -134,9 +145,21 @@ void draw(uint8_t pos)
 	u8g_DrawStr(&u8g,  0, 30, gFrameCountStr);
 
 	/* Draw the spinner */
-	u8g_SetColorIndex(&u8g, 1);
-	u8g_SetFont(&u8g, u8g_font_6x10);
-	u8g_DrawStr(&u8g, 62, 52, pos == 0 ? "|" : pos == 1 ? "/" : pos == 2 ? "-" : "\\");
+	u8g_SetColorIndex(&u8g, 3);
+	u8g_SetFont(&u8g, u8g_font_10x20);
+	u8g_DrawStr(&u8g, 60, 60, pos == 0 ? "|" : pos == 1 ? "/" : pos == 2 ? "-" : "\\");
+
+	/* Draw the hello world message */
+	static int16_t hello_pos = 168;
+	if(first_page)
+	{
+		hello_pos--;
+		if(hello_pos <= -168)
+			hello_pos = 168;
+	}
+	u8g_SetColorIndex(&u8g, 3);
+	u8g_SetFont(&u8g, u8g_font_ncenR14);
+	u8g_DrawStr(&u8g, hello_pos, 100, "Hello World!");
 }
 
 void initialize_board()
@@ -185,7 +208,7 @@ void SPI_Config(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_DOWN;
+	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
 
 	/* SPI SCK pin configuration */
 	GPIO_InitStructure.GPIO_Pin = SPIx_SCK_PIN;
@@ -201,10 +224,6 @@ void SPI_Config(void)
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 
-	/* Screen CS pin configuration */
-	GPIO_InitStructure.GPIO_Pin = SPIx_SCR_CS_PIN;
-	GPIO_Init(SPIx_SCR_CS_GPIO_PORT, &GPIO_InitStructure);
-
 	/* Screen reset pin configuration */
 	GPIO_InitStructure.GPIO_Pin = SPIx_SCR_RS_PIN;
 	GPIO_Init(SPIx_SCR_RS_GPIO_PORT, &GPIO_InitStructure);
@@ -213,17 +232,22 @@ void SPI_Config(void)
 	GPIO_InitStructure.GPIO_Pin = SPIx_SCR_DC_PIN;
 	GPIO_Init(SPIx_SCR_DC_GPIO_PORT, &GPIO_InitStructure);
 
+	/* Screen CS pin configuration */
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_InitStructure.GPIO_Pin = SPIx_SCR_CS_PIN;
+	GPIO_Init(SPIx_SCR_CS_GPIO_PORT, &GPIO_InitStructure);
+
 
 	/* SPI configuration */
-	SPI_I2S_DeInit(SPI2);
-	SPI_InitStructure.SPI_Direction = SPI_Direction_Tx;
+	SPI_I2S_DeInit(SPIx);
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
 	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-	SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
-	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft | SPI_NSSInternalSoft_Set;
+	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-	SPI_InitStructure.SPI_CRCPolynomial = 7;
+	//SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
 
 	/* Apply SPI configuration */
@@ -231,8 +255,8 @@ void SPI_Config(void)
 
 	/* Screen control lines initial state */
 	GPIO_SetBits(SPIx_SCR_CS_GPIO_PORT, SPIx_SCR_CS_PIN);
-	GPIO_ResetBits(SPIx_SCR_CS_GPIO_PORT, SPIx_SCR_RS_PIN);
-	GPIO_SetBits(SPIx_SCR_CS_GPIO_PORT, SPIx_SCR_DC_PIN);
+	GPIO_SetBits(SPIx_SCR_RS_GPIO_PORT, SPIx_SCR_RS_PIN);
+	GPIO_SetBits(SPIx_SCR_DC_GPIO_PORT, SPIx_SCR_DC_PIN);
 
 	/* Now that everything is configured, activate the peripheral */
 	SPI_Cmd(SPIx, ENABLE);

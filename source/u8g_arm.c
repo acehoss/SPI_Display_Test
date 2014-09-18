@@ -176,7 +176,8 @@ void screen_tx_seq(SPI_TypeDef* spi, const uint8_t* buf, const uint16_t len, con
 {
 	for(uint16_t i = 0; i < len; i++)
 	{
-		while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
+		while(SPI_I2S_GetFlagStatus(spi, SPI_I2S_FLAG_TXE) == RESET);
+		while(SPI_I2S_GetFlagStatus(spi, SPI_I2S_FLAG_BSY) == SET);
 		SPI_I2S_SendData(spi, buf[i]);
 	}
 }
@@ -229,7 +230,7 @@ uint8_t u8g_com_hw_spi_fn(u8g_t *u8g, uint8_t msg, uint8_t arg_val, void *arg_pt
 		break;
 
 	case U8G_COM_MSG_WRITE_BYTE:
-		screen_tx(SPI2, arg_val, command);
+		screen_tx(SPIx, arg_val, command);
 		break;
 
 	case U8G_COM_MSG_WRITE_SEQ:

@@ -49,7 +49,7 @@ extern "C"
 void setup();
 void loop();
 void delay(uint32_t ms);
-void draw(uint8_t pos);
+void draw(uint8_t pos, uint8_t first_page);
 
 void initialize_board();
 void initialize_systick_interrupt();

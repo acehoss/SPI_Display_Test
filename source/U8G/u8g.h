@@ -37,7 +37,7 @@
 #define _U8G_H
 
 /* uncomment the following line to support displays larger than 240x240 */
-//#define U8G_16BIT 1
+#define U8G_16BIT 1
 
 /* comment the following line to generate more compact but interrupt unsafe code */
 #define U8G_INTERRUPT_SAFE 1

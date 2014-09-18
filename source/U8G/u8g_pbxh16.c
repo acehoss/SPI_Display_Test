@@ -114,7 +114,7 @@ void u8g_pbxh16_Set8Pixel(u8g_pb_t *b, u8g_dev_arg_pixel_t *arg_pixel)
   register uint8_t pixel = arg_pixel->pixel;
   u8g_uint_t dx = 0;
   u8g_uint_t dy = 0;
-  
+
   switch( arg_pixel->dir )
   {
     case 0: dx++; break;
@@ -122,7 +122,7 @@ void u8g_pbxh16_Set8Pixel(u8g_pb_t *b, u8g_dev_arg_pixel_t *arg_pixel)
     case 2: dx--; break;
     case 3: dy--; break;
   }
-  
+
   do
   {
     if ( pixel & 128 )
@@ -130,7 +130,7 @@ void u8g_pbxh16_Set8Pixel(u8g_pb_t *b, u8g_dev_arg_pixel_t *arg_pixel)
     arg_pixel->x += dx;
     arg_pixel->y += dy;
     pixel <<= 1;
-  } while( pixel != 0  );  
+  } while( pixel != 0  );
 }
 
 

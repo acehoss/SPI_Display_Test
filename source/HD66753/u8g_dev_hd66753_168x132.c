@@ -123,8 +123,15 @@
  * That said, there are other reasons. Rendering a smaller area means less memory usage. If memory is at
  * a premium, constraining the rendering window will reduce the memory usage.
  */
+
+
 //Uncomment the following line to disable resetting address at the beginning of each line
+//Per above description, saves 10 bytes per row.
 //#define DRAW_FULL_CGRAM_SIZE
+
+//this is essentially a divisor on the amount RAM needed for a video buffer
+//Define DRAW_FULL_CGRAM_SIZE and NUM_PAGES = 1 will result in 5544 bytes of RAM used.
+//A smaller display area or additional pages will reduce memory consumption
 //make this a number that divides HEIGHT
 #define NUM_PAGES 1
 
@@ -263,6 +270,8 @@ uint8_t u8g_dev_hd66753_168x132_fn(u8g_t *u8g, u8g_dev_t *dev, uint8_t msg, void
 
       LcdSetContrast(u8g, dev, 110);
 
+      LcdSetAddress(u8g, dev, 0);
+
       // Clear screen
       u8g_SetChipSelect(u8g, dev, 1);
       u8g_WriteByte(u8g, dev, Draw_Block_Value_Macro[0]);
@@ -303,12 +312,12 @@ uint8_t u8g_dev_hd66753_168x132_fn(u8g_t *u8g, u8g_dev_t *dev, uint8_t msg, void
         u8g_WriteByte(u8g, dev, Draw_Block_Value_Macro[3]);
 #endif
 
-        for( row = pb->p.page_y0; row < row_after_last_row; row++)
+        for( row = 0; row < pb->p.page_height; row++)
         {
         	uint16_t row_offset = row*WIDTH_BLOCKS*BLOCK_MEM_SIZE;
 
 #ifndef DRAW_FULL_CGRAM_SIZE
-        	uint16_t row_addr = row*0x0020;
+        	uint16_t row_addr = (pb->p.page_y0 + row)*0x0020;
             LcdSetAddress(u8g, dev, row_addr);
 
             u8g_SetChipSelect(u8g, dev, 1);
